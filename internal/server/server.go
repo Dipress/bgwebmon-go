@@ -6,12 +6,24 @@ import (
 
 	"github.com/dipress/bgwebmon-go/internal/server/user"
 	"github.com/julienschmidt/httprouter"
+	"github.com/rileyr/middleware"
 )
+
+func setHeader(fn httprouter.Handle) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+		w.Header().Set("Content-type", "application/json")
+		fn(w, r, p)
+	}
+}
 
 //New func create server
 func New(db *sql.DB) *http.Server {
 	mux := httprouter.New()
-	mux.POST("/auth", postLogin(user.NewAuthenticator(db)))
+
+	s := middleware.NewStack()
+	s.Use(setHeader)
+
+	mux.POST("/auth", s.Wrap(postLogin(user.NewAuthenticator(db))))
 
 	return &http.Server{
 		Addr:    "127.0.0.1:5000",
