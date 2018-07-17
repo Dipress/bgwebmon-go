@@ -18,6 +18,8 @@ func postLogin(s user.Authenticator) httprouter.Handle {
 
 		if err := s.Authenticate(r, &okResp); err != nil {
 			switch resp := err.(type) {
+			case user.ValidationErrorResponse:
+				errorResponse(w, resp)
 			case user.ErrorResponse:
 				errorResponse(w, resp)
 			default:

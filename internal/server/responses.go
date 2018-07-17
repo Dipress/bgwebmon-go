@@ -11,7 +11,7 @@ func okResponse(w http.ResponseWriter, resp interface{}) {
 }
 
 func errorResponse(w http.ResponseWriter, resp interface{}) {
-	w.WriteHeader(http.StatusUnauthorized)
+	w.WriteHeader(http.StatusBadRequest)
 	json.NewEncoder(w).Encode(resp)
 }
 

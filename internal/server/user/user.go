@@ -11,14 +11,12 @@ import (
 
 	jwt "github.com/dgrijalva/jwt-go"
 
-	"github.com/go-ozzo/ozzo-validation"
 	"github.com/pkg/errors"
 )
 
-var expiredTime = time.Now().Add(time.Hour * 24).Unix()
-
 const (
-	errorLoginOrPassword = "login or password are invalid"
+	invalidLoginOrPasswordMessage = "login or password are invalid"
+	expiredTime                   = time.Hour * 24
 )
 
 // Authenticator interface for user authenticate
@@ -54,15 +52,32 @@ func (e ErrorResponse) Error() string {
 	return e.Message
 }
 
+// ValidationErrorResponse struct
+type ValidationErrorResponse struct {
+	Status string `json:"status"`
+	Fields []validationField
+}
+
+type validationField struct {
+	Field   string `json:"field"`
+	Message string `json:"message"`
+}
+
+func (v ValidationErrorResponse) Error() string {
+	return ""
+}
+
 // authenticator struct
 type authenticator struct {
 	db *sql.DB
+	validator
 }
 
 // NewAuthenticator implements authenticator
 func NewAuthenticator(db *sql.DB) Authenticator {
 	return &authenticator{
-		db: db,
+		db:        db,
+		validator: ozzoValidator{},
 	}
 }
 
@@ -73,20 +88,19 @@ func (u *authenticator) Authenticate(r *http.Request, resp *Response) error {
 		return errors.Wrap(err, "unable to decode")
 	}
 
-	if err := request.Validate(); err != nil {
-		return ErrorResponse{Status: "error", Message: err.Error()}
+	if err := u.validator.Validate(request); err != nil {
+		return err
 	}
 
 	user := Model{}
 	if err := u.findByLogin(request.Login, &user); err != nil {
-		return ErrorResponse{Status: "error", Message: errorLoginOrPassword}
-
+		return ErrorResponse{Status: "error", Message: invalidLoginOrPasswordMessage}
 	}
 
 	canditatePassword := passwordEncrypted(request.Password)
 
 	if user.Password != canditatePassword {
-		return ErrorResponse{Status: "error", Message: errorLoginOrPassword}
+		return ErrorResponse{Status: "error", Message: invalidLoginOrPasswordMessage}
 	}
 
 	token, err := createToken(user.ID)
@@ -100,14 +114,6 @@ func (u *authenticator) Authenticate(r *http.Request, resp *Response) error {
 	}
 
 	return nil
-}
-
-// Validate form request login or password
-func (model Model) Validate() error {
-	return validation.ValidateStruct(&model,
-		validation.Field(&model.Login, validation.Required),
-		validation.Field(&model.Password, validation.Required),
-	)
 }
 
 // findByLogin find user by login in database
@@ -138,7 +144,7 @@ func createToken(userID int) (string, error) {
 	// Create new token
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"userID": userID,
-		"exp":    expiredTime,
+		"exp":    time.Now().Add(expiredTime).Unix(),
 	})
 
 	// Sign and get the complete encoded token as a string using the secret

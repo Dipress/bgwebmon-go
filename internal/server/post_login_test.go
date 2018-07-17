@@ -29,7 +29,7 @@ func Test_postLogin(t *testing.T) {
 			authFunc: func(r *http.Request, m *user.Response) error {
 				return user.ErrorResponse{Status: "error", Message: "login or password a wrong"}
 			},
-			code: http.StatusUnauthorized,
+			code: http.StatusBadRequest,
 		},
 		{
 			name: "internal server error",
