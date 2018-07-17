@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/dipress/bgwebmon-go/internal/server/user"
+	"github.com/dipress/bgwebmon-go/internal/server/auth"
 	"github.com/julienschmidt/httprouter"
 	"github.com/stretchr/testify/assert"
 )
@@ -19,21 +19,21 @@ func Test_postLogin(t *testing.T) {
 	}{
 		{
 			name: "ok",
-			authFunc: func(r *http.Request, m *user.Response) error {
+			authFunc: func(r *http.Request, m *auth.Response) error {
 				return nil
 			},
 			code: http.StatusOK,
 		},
 		{
 			name: "login or password mismatch",
-			authFunc: func(r *http.Request, m *user.Response) error {
-				return user.ErrorResponse{Status: "error", Message: "login or password a wrong"}
+			authFunc: func(r *http.Request, m *auth.Response) error {
+				return auth.ErrorResponse{Status: "error", Message: "login or password a wrong"}
 			},
 			code: http.StatusBadRequest,
 		},
 		{
 			name: "internal server error",
-			authFunc: func(r *http.Request, m *user.Response) error {
+			authFunc: func(r *http.Request, m *auth.Response) error {
 				return errors.New("mock error")
 			},
 			code: http.StatusInternalServerError,
@@ -56,8 +56,8 @@ func Test_postLogin(t *testing.T) {
 	}
 }
 
-type authenticatorFunc func(*http.Request, *user.Response) error
+type authenticatorFunc func(*http.Request, *auth.Response) error
 
-func (f authenticatorFunc) Authenticate(r *http.Request, m *user.Response) error {
+func (f authenticatorFunc) Authenticate(r *http.Request, m *auth.Response) error {
 	return f(r, m)
 }

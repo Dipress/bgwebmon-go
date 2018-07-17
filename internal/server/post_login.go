@@ -3,7 +3,7 @@ package server
 import (
 	"net/http"
 
-	"github.com/dipress/bgwebmon-go/internal/server/user"
+	"github.com/dipress/bgwebmon-go/internal/server/auth"
 	"github.com/julienschmidt/httprouter"
 )
 
@@ -12,15 +12,15 @@ const (
 )
 
 // PostLogin func return login page
-func postLogin(s user.Authenticator) httprouter.Handle {
+func postLogin(s auth.Authenticator) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		okResp := user.Response{}
+		okResp := auth.Response{}
 
 		if err := s.Authenticate(r, &okResp); err != nil {
 			switch resp := err.(type) {
-			case user.ValidationErrorResponse:
+			case auth.ValidationErrorResponse:
 				errorResponse(w, resp)
-			case user.ErrorResponse:
+			case auth.ErrorResponse:
 				errorResponse(w, resp)
 			default:
 				internalServerResponse(w, internalServerErrorMessage)

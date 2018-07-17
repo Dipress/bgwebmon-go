@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"net/http"
 
-	"github.com/dipress/bgwebmon-go/internal/server/user"
+	"github.com/dipress/bgwebmon-go/internal/server/auth"
 	"github.com/julienschmidt/httprouter"
 	"github.com/rileyr/middleware"
 )
@@ -23,7 +23,7 @@ func New(db *sql.DB) *http.Server {
 	s := middleware.NewStack()
 	s.Use(setHeader)
 
-	mux.POST("/auth", s.Wrap(postLogin(user.NewAuthenticator(db))))
+	mux.POST("/auth", s.Wrap(postLogin(auth.NewAuthenticator(db))))
 
 	return &http.Server{
 		Addr:    "127.0.0.1:5000",

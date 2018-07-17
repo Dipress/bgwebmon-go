@@ -1,4 +1,4 @@
-package user
+package auth
 
 import (
 	"crypto/md5"
@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	invalidLoginOrPasswordMessage = "login or password are invalid"
+	invalidLoginOrPasswordMessage = "login or password is invalid"
 	expiredTime                   = time.Hour * 24
 )
 
