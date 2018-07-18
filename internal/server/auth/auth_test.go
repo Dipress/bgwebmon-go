@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_jwtTokenCreate(t *testing.T) {
+func Test_jwtToken_Token(t *testing.T) {
 	tests := []struct {
 		name    string
 		userID  int
@@ -24,7 +24,51 @@ func Test_jwtTokenCreate(t *testing.T) {
 			t.Parallel()
 
 			jwtToken := jwtToken{}
-			_, err := jwtToken.Create(tt.userID)
+			_, err := jwtToken.Token(tt.userID)
+
+			if !tt.wantErr {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func Test_passwordChecker_Check(t *testing.T) {
+	tests := []struct {
+		name            string
+		requestPassword string
+		modelPassword   string
+		wantErr         bool
+		errorResponse   ErrorResponse
+	}{
+		{
+			name:            "password valid",
+			requestPassword: "password",
+			modelPassword:   "5F4DCC3B5AA765D61D8327DEB882CF99",
+		},
+		{
+			name:            "password invalid",
+			requestPassword: "password123",
+			modelPassword:   "5F4DCC3B5AA765D61D8327DEB882CF99",
+			wantErr:         true,
+			errorResponse: ErrorResponse{
+				Status:  "error",
+				Message: invalidLoginOrPasswordMessage,
+			},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			passwordChecker := passwordChecker{}
+			err := passwordChecker.Check(tt.requestPassword, tt.modelPassword)
+
+			if tt.wantErr {
+				assert.NotNil(t, err)
+				assert.Equal(t, tt.errorResponse, err.(ErrorResponse))
+			}
 
 			if !tt.wantErr {
 				assert.NoError(t, err)

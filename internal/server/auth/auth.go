@@ -25,7 +25,11 @@ type Authenticator interface {
 }
 
 type tokener interface {
-	Create(userID int) (string, error)
+	Token(userID int) (string, error)
+}
+
+type checker interface {
+	Check(requestPassword, modelPassword string) error
 }
 
 // Model represents a user table in database.
@@ -76,6 +80,7 @@ type authenticator struct {
 	db *sql.DB
 	validator
 	tokener
+	checker
 }
 
 // NewAuthenticator implements authenticator
@@ -84,6 +89,7 @@ func NewAuthenticator(db *sql.DB) Authenticator {
 		db:        db,
 		validator: ozzoValidator{},
 		tokener:   jwtToken{},
+		checker:   passwordChecker{},
 	}
 }
 
@@ -103,13 +109,11 @@ func (u *authenticator) Authenticate(r *http.Request, resp *Response) error {
 		return ErrorResponse{Status: "error", Message: invalidLoginOrPasswordMessage}
 	}
 
-	canditatePassword := passwordEncrypted(request.Password)
-
-	if user.Password != canditatePassword {
-		return ErrorResponse{Status: "error", Message: invalidLoginOrPasswordMessage}
+	if err := u.checker.Check(request.Password, user.Password); err != nil {
+		return err
 	}
 
-	token, err := u.Create(user.ID)
+	token, err := u.tokener.Token(user.ID)
 	if err != nil {
 		return err
 	}
@@ -119,6 +123,16 @@ func (u *authenticator) Authenticate(r *http.Request, resp *Response) error {
 		Token: token,
 	}
 
+	return nil
+}
+
+type passwordChecker struct{}
+
+func (p passwordChecker) Check(requestPassword, modelPassword string) error {
+	candidatePassword := passwordEncrypted(requestPassword)
+	if candidatePassword != modelPassword {
+		return ErrorResponse{Status: "error", Message: invalidLoginOrPasswordMessage}
+	}
 	return nil
 }
 
@@ -145,7 +159,7 @@ func passwordEncrypted(password string) string {
 
 type jwtToken struct{}
 
-func (j jwtToken) Create(userID int) (string, error) {
+func (j jwtToken) Token(userID int) (string, error) {
 	mySigningKey := []byte("secret")
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{

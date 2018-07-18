@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_ozzoValidatorValidate(t *testing.T) {
+func Test_ozzoValidator_Validate(t *testing.T) {
 	tests := []struct {
 		name              string
 		model             Model
