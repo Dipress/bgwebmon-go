@@ -24,6 +24,10 @@ type Authenticator interface {
 	Authenticate(*http.Request, *Response) error
 }
 
+type tokener interface {
+	Create(userID int) (string, error)
+}
+
 // Model represents a user table in database.
 type Model struct {
 	ID       int    `json:"id"`
@@ -71,6 +75,7 @@ func (v ValidationErrorResponse) Error() string {
 type authenticator struct {
 	db *sql.DB
 	validator
+	tokener
 }
 
 // NewAuthenticator implements authenticator
@@ -78,6 +83,7 @@ func NewAuthenticator(db *sql.DB) Authenticator {
 	return &authenticator{
 		db:        db,
 		validator: ozzoValidator{},
+		tokener:   jwtToken{},
 	}
 }
 
@@ -103,9 +109,9 @@ func (u *authenticator) Authenticate(r *http.Request, resp *Response) error {
 		return ErrorResponse{Status: "error", Message: invalidLoginOrPasswordMessage}
 	}
 
-	token, err := createToken(user.ID)
+	token, err := u.Create(user.ID)
 	if err != nil {
-		return errors.Wrap(err, "unable to create token")
+		return err
 	}
 
 	resp.Status = "ok"
@@ -137,17 +143,16 @@ func passwordEncrypted(password string) string {
 	return strings.ToUpper(mdStr)
 }
 
-func createToken(userID int) (string, error) {
-	//The global secret key, don't show it, anybody.
+type jwtToken struct{}
+
+func (j jwtToken) Create(userID int) (string, error) {
 	mySigningKey := []byte("secret")
 
-	// Create new token
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"userID": userID,
 		"exp":    time.Now().Add(expiredTime).Unix(),
 	})
 
-	// Sign and get the complete encoded token as a string using the secret
 	tokenString, err := token.SignedString(mySigningKey)
 	if err != nil {
 		return "", errors.Wrap(err, "unable to create token")
