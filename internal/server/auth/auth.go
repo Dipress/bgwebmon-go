@@ -32,6 +32,10 @@ type checker interface {
 	Check(requestPassword, modelPassword string) error
 }
 
+type decoder interface {
+	Decode(r *http.Request, model *Model) error
+}
+
 // Model represents a user table in database.
 type Model struct {
 	ID       int    `json:"id"`
@@ -81,6 +85,7 @@ type authenticator struct {
 	validator
 	tokener
 	checker
+	decoder
 }
 
 // NewAuthenticator implements authenticator
@@ -90,14 +95,15 @@ func NewAuthenticator(db *sql.DB) Authenticator {
 		validator: ozzoValidator{},
 		tokener:   jwtToken{},
 		checker:   passwordChecker{},
+		decoder:   bodyDecoder{},
 	}
 }
 
 // Authenticate implements interface Authenticator.Authenticate
 func (u *authenticator) Authenticate(r *http.Request, resp *Response) error {
 	request := Model{}
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		return errors.Wrap(err, "unable to decode")
+	if err := u.decoder.Decode(r, &request); err != nil {
+		return err
 	}
 
 	if err := u.validator.Validate(request); err != nil {
@@ -173,4 +179,14 @@ func (j jwtToken) Token(userID int) (string, error) {
 	}
 
 	return tokenString, nil
+}
+
+type bodyDecoder struct{}
+
+func (d bodyDecoder) Decode(r *http.Request, model *Model) error {
+	err := json.NewDecoder(r.Body).Decode(&model)
+	if err != nil {
+		errors.Wrap(err, "unable to decode")
+	}
+	return nil
 }
