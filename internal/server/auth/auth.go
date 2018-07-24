@@ -86,6 +86,7 @@ type authenticator struct {
 	tokener
 	checker
 	decoder
+	finder
 }
 
 // NewAuthenticator implements authenticator
@@ -96,6 +97,7 @@ func NewAuthenticator(db *sql.DB) Authenticator {
 		tokener:   jwtToken{},
 		checker:   passwordChecker{},
 		decoder:   bodyDecoder{},
+		finder:    findByLogin{},
 	}
 }
 
@@ -111,7 +113,7 @@ func (u *authenticator) Authenticate(r *http.Request, resp *Response) error {
 	}
 
 	user := Model{}
-	if err := u.findByLogin(request.Login, &user); err != nil {
+	if err := u.Find(u.db, request.Login, &user); err != nil {
 		return ErrorResponse{Status: "error", Message: invalidLoginOrPasswordMessage}
 	}
 
@@ -142,10 +144,15 @@ func (p passwordChecker) Check(requestPassword, modelPassword string) error {
 	return nil
 }
 
-// findByLogin find user by login in database
-func (u *authenticator) findByLogin(login string, user *Model) error {
-	row := u.db.QueryRow("SELECT id, login, pswd FROM user WHERE login = ?", login)
-	switch err := row.Scan(&user.ID, &user.Login, &user.Password); err {
+type finder interface {
+	Find(db *sql.DB, login string, model *Model) error
+}
+
+type findByLogin struct{}
+
+func (f findByLogin) Find(db *sql.DB, login string, model *Model) error {
+	row := db.QueryRow("SELECT id, login, pswd FROM user WHERE login = ?", login)
+	switch err := row.Scan(&model.ID, &model.Login, &model.Password); err {
 	case sql.ErrNoRows:
 		return errors.Wrap(err, "login not found")
 	default:
