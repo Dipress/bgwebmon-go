@@ -18,13 +18,15 @@ const (
 
 func Test_jwtToken_Token(t *testing.T) {
 	tests := []struct {
-		name    string
-		userID  int
-		wantErr bool
+		name      string
+		userID    int
+		secretKey string
+		wantErr   bool
 	}{
 		{
-			name:   "create token",
-			userID: 27,
+			name:      "create token",
+			userID:    27,
+			secretKey: "secret",
 		},
 	}
 
@@ -34,7 +36,7 @@ func Test_jwtToken_Token(t *testing.T) {
 			t.Parallel()
 
 			jwtToken := jwtToken{}
-			_, err := jwtToken.Token(tt.userID)
+			_, err := jwtToken.Token(tt.userID, tt.secretKey)
 
 			if !tt.wantErr {
 				assert.NoError(t, err)

@@ -25,7 +25,7 @@ type Authenticator interface {
 }
 
 type tokener interface {
-	Token(userID int) (string, error)
+	Token(userID int, secretKey string) (string, error)
 }
 
 type checker interface {
@@ -81,7 +81,8 @@ func (v ValidationErrorResponse) Error() string {
 
 // authenticator struct
 type authenticator struct {
-	db *sql.DB
+	secretKey string
+	db        *sql.DB
 	validator
 	tokener
 	checker
@@ -90,9 +91,10 @@ type authenticator struct {
 }
 
 // NewAuthenticator implements authenticator
-func NewAuthenticator(db *sql.DB) Authenticator {
+func NewAuthenticator(db *sql.DB, secretKey string) Authenticator {
 	return &authenticator{
 		db:        db,
+		secretKey: secretKey,
 		validator: ozzoValidator{},
 		tokener:   jwtToken{},
 		checker:   passwordChecker{},
@@ -121,7 +123,7 @@ func (u *authenticator) Authenticate(r *http.Request, resp *Response) error {
 		return err
 	}
 
-	token, err := u.tokener.Token(user.ID)
+	token, err := u.tokener.Token(user.ID, u.secretKey)
 	if err != nil {
 		return err
 	}
@@ -172,8 +174,8 @@ func passwordEncrypted(password string) string {
 
 type jwtToken struct{}
 
-func (j jwtToken) Token(userID int) (string, error) {
-	mySigningKey := []byte("secret")
+func (j jwtToken) Token(userID int, secretKey string) (string, error) {
+	mySigningKey := []byte(secretKey)
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"userID": userID,

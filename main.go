@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"flag"
 	"log"
 
 	"github.com/dipress/bgwebmon-go/internal/server"
@@ -9,15 +10,23 @@ import (
 	"github.com/pkg/errors"
 )
 
+var (
+	dsn = flag.String("dsn", "username:password@tcp(127.0.0.1:3306)/bgbilling_development",
+		"mysql connection string")
+	secretKey = flag.String("secret-key", "", "secret key for jwt token")
+)
+
 func main() {
-	db, err := openDB("username:password@tcp(127.0.0.1:3306)/bgbilling_development")
+	flag.Parse()
+
+	db, err := openDB(*dsn)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	defer db.Close()
 
-	server := server.New(db)
+	server := server.New(db, *secretKey)
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}

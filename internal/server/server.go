@@ -17,13 +17,13 @@ func setHeader(fn httprouter.Handle) httprouter.Handle {
 }
 
 //New func create server
-func New(db *sql.DB) *http.Server {
+func New(db *sql.DB, secretKey string) *http.Server {
 	mux := httprouter.New()
 
 	s := middleware.NewStack()
 	s.Use(setHeader)
 
-	mux.POST("/auth", s.Wrap(postLogin(auth.NewAuthenticator(db))))
+	mux.POST("/auth", s.Wrap(postLogin(auth.NewAuthenticator(db, secretKey))))
 
 	return &http.Server{
 		Addr:    "127.0.0.1:5000",
