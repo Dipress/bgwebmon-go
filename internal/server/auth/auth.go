@@ -28,6 +28,10 @@ type tokener interface {
 	Token(userID int, secretKey string) (string, error)
 }
 
+type finder interface {
+	Find(login string, model *Model) error
+}
+
 type checker interface {
 	Check(requestPassword, modelPassword string) error
 }
@@ -93,13 +97,12 @@ type authenticator struct {
 // NewAuthenticator implements authenticator
 func NewAuthenticator(db *sql.DB, secretKey string) Authenticator {
 	return &authenticator{
-		db:        db,
 		secretKey: secretKey,
 		validator: ozzoValidator{},
 		tokener:   jwtToken{},
 		checker:   passwordChecker{},
 		decoder:   bodyDecoder{},
-		finder:    findByLogin{},
+		finder:    findByLogin{db: db},
 	}
 }
 
@@ -115,7 +118,7 @@ func (u *authenticator) Authenticate(r *http.Request, resp *Response) error {
 	}
 
 	user := Model{}
-	if err := u.Find(u.db, request.Login, &user); err != nil {
+	if err := u.finder.Find(request.Login, &user); err != nil {
 		return ErrorResponse{Status: "error", Message: invalidLoginOrPasswordMessage}
 	}
 
@@ -146,14 +149,12 @@ func (p passwordChecker) Check(requestPassword, modelPassword string) error {
 	return nil
 }
 
-type finder interface {
-	Find(db *sql.DB, login string, model *Model) error
+type findByLogin struct {
+	db *sql.DB
 }
 
-type findByLogin struct{}
-
-func (f findByLogin) Find(db *sql.DB, login string, model *Model) error {
-	row := db.QueryRow("SELECT id, login, pswd FROM user WHERE login = ?", login)
+func (f findByLogin) Find(login string, model *Model) error {
+	row := f.db.QueryRow("SELECT id, login, pswd FROM user WHERE login = ?", login)
 	switch err := row.Scan(&model.ID, &model.Login, &model.Password); err {
 	case sql.ErrNoRows:
 		return errors.Wrap(err, "login not found")

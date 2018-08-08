@@ -23,7 +23,7 @@ func postLogin(s auth.Authenticator) httprouter.Handle {
 			case auth.ErrorResponse:
 				errorResponse(w, resp)
 			default:
-				internalServerResponse(w, internalServerErrorMessage)
+				internalServerErrorResponse(w, internalServerErrorMessage)
 			}
 			return
 		}

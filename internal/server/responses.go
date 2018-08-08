@@ -15,7 +15,7 @@ func errorResponse(w http.ResponseWriter, resp interface{}) {
 	json.NewEncoder(w).Encode(resp)
 }
 
-func internalServerResponse(w http.ResponseWriter, resp interface{}) {
+func internalServerErrorResponse(w http.ResponseWriter, resp interface{}) {
 	w.WriteHeader(http.StatusInternalServerError)
 	json.NewEncoder(w).Encode(resp)
 }
