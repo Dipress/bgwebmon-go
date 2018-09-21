@@ -2,6 +2,7 @@ package auth
 
 import (
 	"bytes"
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"testing"
@@ -16,47 +17,105 @@ const (
 	}`
 )
 
-type decoderMock struct{}
-
-func (d decoderMock) Decode(r *http.Request, model *Model) error {
-	return nil
-}
-
-type validatorMock struct{}
-
-func (v validatorMock) Validate(model Model) error {
-	return nil
-}
-
-type finderMock struct{}
-
-func (f finderMock) Find(login string, model *Model) error {
-	return nil
-}
-
-type checkerMock struct{}
-
-func (c checkerMock) Check(requestPassword, modelPassword string) error {
-	return nil
-}
-
-type tokenerMock struct{}
-
-func (t tokenerMock) Token(userID int, secretKey string) (string, error) {
-	return "", nil
-}
-
 func Test_authenticator_Authenticate(t *testing.T) {
 	tests := []struct {
-		name     string
-		request  *http.Request
-		response *Response
-		wantErr  bool
+		name         string
+		decodeFunc   func(r *http.Request, model *Model) error
+		validateFunc func(model Model) error
+		findFunc     func(login string, model *Model) error
+		checkFunc    func(requestPassword, modelPassword string) error
+		tokenFunc    func(userID int, secretKey string) (string, error)
+		expect       Response
+		wantErr      bool
 	}{
 		{
-			name:     "status Ok",
-			request:  &http.Request{},
-			response: &Response{},
+			name: "decoder error",
+			decodeFunc: func(r *http.Request, model *Model) error {
+				return errors.New("mock error")
+			},
+			wantErr: true,
+		},
+		{
+			name: "validator error",
+			decodeFunc: func(r *http.Request, model *Model) error {
+				return nil
+			},
+			validateFunc: func(model Model) error {
+				return errors.New("mock error")
+			},
+			wantErr: true,
+		},
+		{
+			name: "finder error",
+			decodeFunc: func(r *http.Request, model *Model) error {
+				return nil
+			},
+			validateFunc: func(model Model) error {
+				return nil
+			},
+			findFunc: func(login string, model *Model) error {
+				return errors.New("mock error")
+			},
+			wantErr: true,
+		},
+		{
+			name: "checker error",
+			decodeFunc: func(r *http.Request, model *Model) error {
+				return nil
+			},
+			validateFunc: func(model Model) error {
+				return nil
+			},
+			findFunc: func(login string, model *Model) error {
+				return nil
+			},
+			checkFunc: func(requestPassword, modelPassword string) error {
+				return errors.New("mock error")
+			},
+			wantErr: true,
+		},
+		{
+			name: "tokener error",
+			decodeFunc: func(r *http.Request, model *Model) error {
+				return nil
+			},
+			validateFunc: func(model Model) error {
+				return nil
+			},
+			findFunc: func(login string, model *Model) error {
+				return nil
+			},
+			checkFunc: func(requestPassword, modelPassword string) error {
+				return nil
+			},
+			tokenFunc: func(userID int, secretKey string) (string, error) {
+				return "", errors.New("mock error")
+			},
+			wantErr: true,
+		},
+		{
+			name: "ok",
+			decodeFunc: func(r *http.Request, model *Model) error {
+				return nil
+			},
+			validateFunc: func(model Model) error {
+				return nil
+			},
+			findFunc: func(login string, model *Model) error {
+				return nil
+			},
+			checkFunc: func(requestPassword, modelPassword string) error {
+				return nil
+			},
+			tokenFunc: func(userID int, secretKey string) (string, error) {
+				return "mytoken", nil
+			},
+			expect: Response{
+				Status: "ok",
+				Data: dataField{
+					Token: "mytoken",
+				},
+			},
 		},
 	}
 
@@ -67,17 +126,23 @@ func Test_authenticator_Authenticate(t *testing.T) {
 
 			auth := authenticator{
 				secretKey: "secret",
-				decoder:   decoderMock{},
-				validator: validatorMock{},
-				finder:    finderMock{},
-				checker:   checkerMock{},
-				tokener:   tokenerMock{},
+				decoder:   decoderFunc(tt.decodeFunc),
+				validator: validatorFunc(tt.validateFunc),
+				finder:    finderFunc(tt.findFunc),
+				checker:   checkerFunc(tt.checkFunc),
+				tokener:   tokenerFunc(tt.tokenFunc),
 			}
 
-			err := auth.Authenticate(tt.request, tt.response)
+			var got Response
+			err := auth.Authenticate(nil, &got)
 
 			if tt.wantErr {
-				assert.NoError(t, err)
+				assert.Error(t, err)
+			}
+
+			if !tt.wantErr {
+				assert.Nil(t, err)
+				assert.Equal(t, tt.expect, got)
 			}
 
 		})
@@ -185,4 +250,34 @@ func Test_bodyDecoder_Decode(t *testing.T) {
 			}
 		})
 	}
+}
+
+type decoderFunc func(r *http.Request, model *Model) error
+
+func (d decoderFunc) Decode(r *http.Request, model *Model) error {
+	return d(r, model)
+}
+
+type validatorFunc func(model Model) error
+
+func (v validatorFunc) Validate(model Model) error {
+	return v(model)
+}
+
+type finderFunc func(login string, model *Model) error
+
+func (f finderFunc) Find(login string, model *Model) error {
+	return f(login, model)
+}
+
+type checkerFunc func(requestPassword, modelPassword string) error
+
+func (c checkerFunc) Check(requestPassword, modelPassword string) error {
+	return c(requestPassword, requestExample)
+}
+
+type tokenerFunc func(userID int, secretKey string) (string, error)
+
+func (t tokenerFunc) Token(userID int, secretKey string) (string, error) {
+	return t(userID, secretKey)
 }

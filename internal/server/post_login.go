@@ -7,10 +7,6 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-const (
-	internalServerErrorMessage = "internal server error"
-)
-
 // PostLogin func return login page
 func postLogin(s auth.Authenticator) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -23,10 +19,11 @@ func postLogin(s auth.Authenticator) httprouter.Handle {
 			case auth.ErrorResponse:
 				errorResponse(w, resp)
 			default:
-				internalServerErrorResponse(w, internalServerErrorMessage)
+				internalServerErrorResponse(w)
 			}
 			return
 		}
+
 		okResponse(w, okResp)
 	}
 }

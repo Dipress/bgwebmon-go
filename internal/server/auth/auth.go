@@ -86,7 +86,6 @@ func (v ValidationErrorResponse) Error() string {
 // authenticator struct
 type authenticator struct {
 	secretKey string
-	db        *sql.DB
 	validator
 	tokener
 	checker

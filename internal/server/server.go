@@ -16,7 +16,7 @@ func setHeader(fn httprouter.Handle) httprouter.Handle {
 	}
 }
 
-//New func create server
+// New func create server
 func New(db *sql.DB, secretKey string) *http.Server {
 	mux := httprouter.New()
 

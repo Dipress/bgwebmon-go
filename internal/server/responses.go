@@ -2,20 +2,29 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 )
 
+const (
+	internalServerErrorMessage = "internal server error"
+)
+
 func okResponse(w http.ResponseWriter, resp interface{}) {
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		internalServerErrorResponse(w)
+	}
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(resp)
 }
 
 func errorResponse(w http.ResponseWriter, resp interface{}) {
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		internalServerErrorResponse(w)
+	}
 	w.WriteHeader(http.StatusBadRequest)
-	json.NewEncoder(w).Encode(resp)
 }
 
-func internalServerErrorResponse(w http.ResponseWriter, resp interface{}) {
+func internalServerErrorResponse(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusInternalServerError)
-	json.NewEncoder(w).Encode(resp)
+	fmt.Fprint(w, internalServerErrorMessage)
 }
